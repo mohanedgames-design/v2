@@ -14,7 +14,20 @@ SNAPSHOT_CSV = os.path.join(OUT_DIR, "current_snapshot.csv")
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119 Safari/537.36",
     "Accept-Language": "en-US,en;q=0.9,ar;q=0.8",
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+    "Cache-Control": "no-cache",
 }
+
+DEFAULT_LIST_SELECTORS = [
+    "ul.products li.product",      # WooCommerce
+    "li.product",                  # WooCommerce generic
+    "article.prd",                 # Jumia
+    ".product-layout",             # OpenCart
+    ".product-thumb",              # OpenCart
+    ".product-card",               # Generic theme
+    ".product-item",               # Generic theme
+    "li.product-item"              # Magento-ish
+]
 
 def abs_url(base, url):
     try:
@@ -71,6 +84,33 @@ def http_get(url, headers, retries=3, backoff=2):
         time.sleep(backoff * (i+1))
     return None
 
+def get_cards(soup, list_selector, url, site_name):
+    cards = []
+    if list_selector:
+        try:
+            cards = soup.select(list_selector)
+            print(f"[DEBUG] {site_name}: primary selector '{list_selector}' -> {len(cards)} matches")
+        except Exception as e:
+            print(f"[WARN] {site_name}: invalid primary selector '{list_selector}': {e}", file=sys.stderr)
+    if not cards:
+        # Try fallbacks
+        for sel in DEFAULT_LIST_SELECTORS:
+            try:
+                cards = soup.select(sel)
+            except Exception:
+                cards = []
+            if cards:
+                print(f"[DEBUG] {site_name}: fallback selector '{sel}' -> {len(cards)} matches")
+                break
+    if not cards:
+        # Dump debug HTML
+        safe = re.sub(r"\W+", "_", site_name)[:30]
+        path = os.path.join(OUT_DIR, f"debug_{safe}.html")
+        with open(path, "w", encoding="utf-8") as f:
+            f.write(str(soup))
+        print(f"[WARN] No cards matched for {site_name}. Saved HTML to {path}", file=sys.stderr)
+    return cards
+
 def main():
     os.makedirs(OUT_DIR, exist_ok=True)
     sites = pd.read_csv(SITES_CSV)
@@ -96,18 +136,26 @@ def main():
             continue
 
         soup = BeautifulSoup(resp.text, "lxml")
-        cards = soup.select(list_selector) if list_selector else []
-        if not cards:
-            safe = re.sub(r"\W+", "_", site_name)[:30]
-            with open(os.path.join(OUT_DIR, f"debug_{safe}.html"), "w", encoding="utf-8") as f:
-                f.write(resp.text)
-            print(f"[WARN] No cards matched for {site_name}. Debug HTML saved.", file=sys.stderr)
+        cards = get_cards(soup, list_selector, url, site_name)
 
         ts = datetime.now(timezone.utc).isoformat()
         for card in cards:
-            name = clean_text(pick_attr(card, name_selector, url))
-            raw_price = pick_attr(card, price_selector, url, price_attribute if price_attribute else None)
-            status_text = clean_text(pick_attr(card, status_selector, url))
+            name = clean_text(pick_attr(card, name_selector, url)) if name_selector else ""
+            if not name:
+                # common fallbacks
+                name = clean_text(pick_attr(card, ".woocommerce-loop-product__title", url)) or \
+                       clean_text(pick_attr(card, "h3.name", url)) or \
+                       clean_text(pick_attr(card, "h2,h3,.product-title,.caption a", url))
+
+            raw_price = pick_attr(card, price_selector, url, price_attribute if price_attribute else None) if price_selector else None
+            if not raw_price:
+                raw_price = pick_attr(card, ".woocommerce-Price-amount", url) or \
+                            pick_attr(card, ".prc,.price,.amount", url)
+
+            status_text = clean_text(pick_attr(card, status_selector, url)) if status_selector else ""
+            if not status_text:
+                status_text = clean_text(pick_attr(card, ".stock,.availability,.-unavailable,.oos,.badge,.stock-status", url)) or ""
+
             sku = clean_text(pick_attr(card, sku_selector, url)) if sku_selector else ""
             product_url = pick_attr(card, product_url_selector, url) or ""
 

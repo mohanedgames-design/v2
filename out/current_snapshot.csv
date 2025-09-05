@@ -1,1 +1,2 @@
-timestamp_iso,site_name,product_name,sku,product_url,status,price_value,currency,raw_price_text,source_url,notes
+﻿timestamp_iso,site_name,product_name,sku,product_url,status,price_value,currency,raw_price_text,source_url,notes
+2025-09-05T22:27:13.990452+00:00,AHW Store (ArabHardware),MeeTion,,,Available,275.0,EGP,EGP275 Price including Taxes,https://ahw.store/computer-peripherals/,

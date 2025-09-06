@@ -1,12 +1,12 @@
 name: Daily Scrape (Safe Mode)
 
 on:
-  workflow_dispatch: {}
+  workflow_dispatch: {}          # lets you run it manually
   schedule:
-    - cron: "22 2 * * *"   # ~05:22 Africa/Cairo
+    - cron: "22 2 * * *"        # runs every day at 02:22 UTC
 
 permissions:
-  contents: write
+  contents: write                # allow the job to push CSVs back to repo
 
 jobs:
   scrape:
@@ -15,7 +15,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Python
+      - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
@@ -32,13 +32,6 @@ jobs:
         run: |
           python scrape.py
 
-      - name: Show outputs
-        run: |
-          echo "----- out dir -----"
-          ls -la out || true
-          echo "----- git status -----"
-          git status --porcelain || true
-
       - name: Commit & push results (only if changed)
         run: |
           git add out/*.csv 2>/dev/null || true
@@ -52,7 +45,7 @@ jobs:
             echo "No changes to commit."
           fi
 
-      - name: Upload artifacts
+      - name: Upload artifacts (optional)
         if: always()
         uses: actions/upload-artifact@v4
         with:

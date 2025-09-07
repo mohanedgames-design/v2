@@ -89,11 +89,11 @@ jobs:
           path: out/*
           if-no-files-found: warn
 
-      - name: Trigger Make Webhook (JSON, minimal)
+      - name: Trigger Make Webhook (valid JSON)
+        env:
+         MAKE_WEBHOOK_URL: "https://hook.us2.make.com/v8xg1sfegycppt03qbkodgx9eesaabl6"
         run: |
          curl -fsS -X POST \
           -H "Content-Type: application/json" \
-         -d '{}' \
+         --data-raw '{"source":"github","repository":"'"${GITHUB_REPOSITORY}"'","run_id":"'"${GITHUB_RUN_ID}"'","commit_sha":"'"${GITHUB_SHA}"'"}' \
          "$MAKE_WEBHOOK_URL"
-        env:
-          MAKE_WEBHOOK_URL: "https://hook.us2.make.com/v8xg1sfegycppt03qbkodgx9eesaabl6"

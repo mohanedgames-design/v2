@@ -55,4 +55,4 @@ jobs:
         
       - name: Trigger Make Webhook
         run: |
-          curl -X POST https://hook.make.com/YOUR_WEBHOOK_URL
+          curl -X POST https://hook.us2.make.com/v8xg1sfegycppt03qbkodgx9eesaabl6

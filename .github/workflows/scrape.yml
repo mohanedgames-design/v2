@@ -90,12 +90,13 @@ jobs:
           if-no-files-found: warn
 
       - name: Trigger Make Webhook (JSON)
-         env:
-    MAKE_WEBHOOK_URL: "https://hook.us2.make.com/v8xg1sfegycppt03qbkodgx9eesaabl6"
-  run: |
-    curl -fsS -X POST \
-      -H "Content-Type: application/json" \
-      -d "{\"source\":\"github\",\"repo\":\"${{ github.repository }}\",\"run_id\":\"${{ github.run_id }}\",\"sha\":\"${{ github.sha }}\",\"ts\":\"${{ github.run_number }}\"}" \
-      "$MAKE_WEBHOOK_URL"
+        env:
+              MAKE_WEBHOOK_URL: "https://hook.us2.make.com/v8xg1sfegycppt03qbkodgx9eesaabl6"
+              run: |
+                curl -fsS -X POST \
+                -H "Content-Type: application/json" \
+                 --data-raw '{"source":"github","repo":"${{ github.repository }}","run_id":"${{ github.run_id }}","sha":"${{ github.sha }}","run_number":"${{ github.run_number }}"}' \
+                  "$MAKE_WEBHOOK_URL"
+
 
 

@@ -89,12 +89,11 @@ jobs:
           path: out/*
           if-no-files-found: warn
 
-      - name: Trigger Make Webhook (plain text)
+      - name: Trigger Make Webhook (JSON, minimal)
         env:
           MAKE_WEBHOOK_URL: "https://hook.us2.make.com/v8xg1sfegycppt03qbkodgx9eesaabl6"
-        run: |
-            curl -fsS -X POST \
-            -H "Content-Type: text/plain" \
-             --data 'ok' \
-             "$MAKE_WEBHOOK_URL"
-
+          run: |
+           curl -fsS -X POST \
+            -H "Content-Type: application/json" \
+            -d '{}' \
+            "$MAKE_WEBHOOK_URL"

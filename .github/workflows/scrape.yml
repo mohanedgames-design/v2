@@ -52,3 +52,7 @@ jobs:
           name: scrape-outputs
           path: out/*
           if-no-files-found: ignore
+                - name: Trigger Make Webhook
+        run: |
+          curl -X POST https://hook.make.com/YOUR_WEBHOOK_URL
+

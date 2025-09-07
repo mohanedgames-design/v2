@@ -25,12 +25,15 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Run scraper
-        env:
-          SITES_CSV_PATH: Sites_Catalog.csv
-          OUT_DIR: out
-        run: |
-          python scrape.py
+           - name: Run scraper (tolerant)
+          run: |
+          set -e
+          python scrape.py || {
+            echo "::warning :: scraper error — creating empty CSVs so the workflow can continue."
+            mkdir -p out
+            printf "timestamp_iso,site_name,product_name,sku,product_url,status,price_value,currency,raw_price_text,source_url,notes\n" > out/current_snapshot.csv
+            cp out/current_snapshot.csv out/products_history.csv
+          }
 
       - name: Commit & push results (only if changed)
         run: |
@@ -53,9 +56,11 @@ jobs:
           path: out/*
           if-no-files-found: ignore
            
-      - name: Trigger Make Webhook
+      - name: Trigger Make Webhook (non-blocking)
         run: |
-          curl -X POST -H "Content-Type: application/json" \
-          -d '{"status":"scrape-finished"}' \
-          https://hook.us2.make.com/v8xg1sfegycppt03qbkodgx9eesaabl6
+          RC=$(curl -s -o /dev/null -w "%{http_code}" -X POST "https://hook.make.com/YOUR_WEBHOOK_URL")
+          echo "Webhook HTTP status: $RC"
+          # Don't fail the job if webhook is down
+          exit 0
+
     

@@ -89,7 +89,13 @@ jobs:
           path: out/*
           if-no-files-found: warn
 
-      - name: Trigger Make webhook (non-blocking)
-        shell: bash
-        run: |
-          curl -fsS -X POST "https://hook.us2.make.com/v8xg1sfegycppt03qbkodgx9eesaabl6" || echo "Webhook call failed (continuing)"
+      - name: Trigger Make Webhook (JSON)
+         env:
+    MAKE_WEBHOOK_URL: "https://hook.us2.make.com/v8xg1sfegycppt03qbkodgx9eesaabl6"
+  run: |
+    curl -fsS -X POST \
+      -H "Content-Type: application/json" \
+      -d "{\"source\":\"github\",\"repo\":\"${{ github.repository }}\",\"run_id\":\"${{ github.run_id }}\",\"sha\":\"${{ github.sha }}\",\"ts\":\"${{ github.run_number }}\"}" \
+      "$MAKE_WEBHOOK_URL"
+
+

@@ -97,6 +97,3 @@ jobs:
                 -H "Content-Type: application/json" \
                  --data-raw '{"source":"github","repo":"${{ github.repository }}","run_id":"${{ github.run_id }}","sha":"${{ github.sha }}","run_number":"${{ github.run_number }}"}' \
                   "$MAKE_WEBHOOK_URL"
-
-
-

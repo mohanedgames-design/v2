@@ -1,12 +1,12 @@
 name: Daily Scrape (Safe Mode)
 
 on:
-  workflow_dispatch: {}          # lets you run it manually
+  workflow_dispatch: {}
   schedule:
-    - cron: "22 2 * * *"        # runs every day at 02:22 UTC
+    - cron: "22 2 * * *"   # daily at 02:22 UTC
 
 permissions:
-  contents: write                # allow the job to push CSVs back to repo
+  contents: write
 
 jobs:
   scrape:
@@ -20,30 +20,43 @@ jobs:
         with:
           python-version: "3.11"
 
+      # Install deps safely (no source builds if possible)
       - name: Install dependencies (resilient)
+        shell: bash
         env:
           PIP_DISABLE_PIP_VERSION_CHECK: "1"
           PIP_NO_INPUT: "1"
         run: |
+          set -e
           python -m pip install --upgrade pip setuptools wheel
-          # Install base deps with binary wheels only (avoids building from source)
-          pip install --only-binary=:all: -r requirements.txt
-          # Try cloudscraper, but do not fail the job if it can't be installed
-          pip install --only-binary=:all: cloudscraper==1.2.71 || echo "cloudscraper optional: install skipped"
-          # Show what's installed for debugging
+          # Install base deps, prefer binary wheels
+          pip install --only-binary=:all: -r requirements.txt || pip install -r requirements.txt
+          # cloudscraper optional, don't fail if not available
+          pip install --only-binary=:all: cloudscraper==1.2.71 || true
           pip list
 
-           - name: Run scraper (tolerant)
-          run: |
+      # Run scraper and always produce CSVs
+      - name: Run scraper (tolerant)
+        shell: bash
+        run: |
           set -e
           python scrape.py || {
-            echo "::warning :: scraper error — creating empty CSVs so the workflow can continue."
+            echo "::warning :: scraper error — writing empty CSVs so workflow continues"
             mkdir -p out
             printf "timestamp_iso,site_name,product_name,sku,product_url,status,price_value,currency,raw_price_text,source_url,notes\n" > out/current_snapshot.csv
             cp out/current_snapshot.csv out/products_history.csv
           }
 
+      - name: Show outputs
+        shell: bash
+        run: |
+          echo "----- out dir -----"
+          ls -la out || true
+          echo "----- git status -----"
+          git status --porcelain || true
+
       - name: Commit & push results (only if changed)
+        shell: bash
         run: |
           git add out/*.csv 2>/dev/null || true
           if ! git diff --cached --quiet; then
@@ -56,19 +69,15 @@ jobs:
             echo "No changes to commit."
           fi
 
-      - name: Upload artifacts (optional)
-        if: always()
+      - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
           name: scrape-outputs
           path: out/*
           if-no-files-found: ignore
-           
-      - name: Trigger Make Webhook (non-blocking)
-        run: |
-          RC=$(curl -s -o /dev/null -w "%{http_code}" -X POST "https://hook.make.com/YOUR_WEBHOOK_URL")
-          echo "Webhook HTTP status: $RC"
-          # Don't fail the job if webhook is down
-          exit 0
 
-    
+      # Trigger Make webhook safely
+      - name: Trigger Make Webhook (non-blocking)
+        shell: bash
+        run: |
+          curl -fsS -X POST "https://hook.us2.make.com/v8xg1sfegycppt03qbkodgx9eesaabl6" || echo "Webhook call failed"

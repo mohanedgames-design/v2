@@ -1,3 +1,14 @@
-site_name,base_url,list_selector,name_selector,price_selector,product_url_selector
-Jumia Egypt,https://www.jumia.com.eg/gaming-pc-accessories/,article.prd,h3.name,.prc,a.core@href
-Gamers Colony,https://gamerscolony.net/product-category/accessories/,ul.products li.product,.woocommerce-loop-product__title,.woocommerce-Price-amount,a.woocommerce-LoopProduct-link@href
+site_name,category_url,platform_hint,pagination_pattern,max_pages,enabled
+Games2Egypt - Accessories,https://www.games2egypt.com/Category/3269/accessories,custom,,1,true
+Gamers Colony - Accessories,https://gamerscolony.net/product-category/accsesories/,woo,https://gamerscolony.net/product-category/accsesories/page/{page}/,3,true
+Arabhardware (AHW) - Computer Peripherals,https://ahw.store/computer-peripherals/,woo,https://ahw.store/computer-peripherals/page/{page}/,3,true
+XPRS (MyXPRS) - Gaming Accessories,https://myxprs.com/collections/gaming-accessories,shopify,,1,true
+2B Egypt - Gaming Accessories,https://2b.com.eg/en/gaming/gaming-acc.html,magento,,1,true
+CompuMe - Accessories,https://compume.com.eg/en/accessories,magento,,1,true
+Technology Valley - Gaming Accessories,https://tv-it.com/product-categories/gaming-accessories,woo,,1,true
+EgyGamer - Hardware/Consoles,https://egygamer.com/en/hardware/consoles,opencart,,1,true
+Games World Egypt - Accessories,https://www.gamesworldegypt.com/product-category/accessories/,woo,https://www.gamesworldegypt.com/product-category/accessories/page/{page}/,3,true
+Taha Game - Accessories,https://tahagame.com/product-category/accessories/,woo,https://tahagame.com/product-category/accessories/page/{page}/,3,true
+Egypt Game Store - (Digital) Accessories,https://egyptgamestore.com/,custom,,1,false
+Noon Egypt - Gaming Accessories,https://www.noon.com/egypt-en/electronics-and-mobiles/video-games-10181/gaming-accessories/,custom,,1,false
+Amazon Egypt - Gaming Accessories,https://www.amazon.eg/-/en/b?node=21833317031,custom,,1,false

@@ -1,16 +1,9 @@
-name: Daily Scrape (Safe Mode)
+name: Daily Scrape (safe)
 
 on:
   workflow_dispatch: {}
   schedule:
-    - cron: "22 2 * * *"   # daily at 02:22 UTC
-
-permissions:name: Daily Scrape (Safe Mode)
-
-on:
-  workflow_dispatch: {}
-  schedule:
-    - cron: "22 2 * * *"   # daily at 02:22 UTC
+    - cron: "22 2 * * *"   # run daily 02:22 UTC
 
 permissions:
   contents: write
@@ -19,23 +12,36 @@ jobs:
   scrape:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
+      - name: Checkout repo
         uses: actions/checkout@v4
+
+      - name: Show repo layout (debug)
+        shell: bash
+        run: |
+          echo "Branch: $GITHUB_REF"
+          echo "Repo root contents:"
+          ls -la
+          echo "Workflows:"
+          ls -la .github/workflows || true
 
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
 
-      - name: Install dependencies (resilient)
+      - name: Install deps (resilient)
         shell: bash
         env:
           PIP_DISABLE_PIP_VERSION_CHECK: "1"
           PIP_NO_INPUT: "1"
         run: |
           set -e
+          python -V
           python -m pip install --upgrade pip setuptools wheel
-          pip install --only-binary=:all: -r requirements.txt || pip install -r requirements.txt
+          if [ -f requirements.txt ]; then
+            pip install --only-binary=:all: -r requirements.txt || pip install -r requirements.txt
+          fi
+          # optional cloud bypass lib
           pip install --only-binary=:all: cloudscraper==1.2.71 || true
           pip list
 
@@ -43,89 +49,26 @@ jobs:
         shell: bash
         run: |
           set -e
-          python scrape.py || {
-            echo "::warning :: scraper error — writing empty CSVs so workflow continues"
-            mkdir -p out
-            printf "timestamp_iso,site_name,product_name,sku,product_url,status,price_value,currency,raw_price_text,source_url,notes\n" > out/current_snapshot.csv
-            cp out/current_snapshot.csv out/products_history.csv
-          }
-
-      - name: Commit & push results (only if changed)
-        shell: bash
-        run: |
-          git add out/*.csv 2>/dev/null || true
-          if ! git diff --cached --quiet; then
-            git config user.name "github-actions[bot]"
-            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git commit -m "Update scraped data [skip ci]"
-            git push
-            echo "Changes pushed."
+          mkdir -p out
+          if [ -f scrape.py ]; then
+            echo "Running scrape.py…"
+            python scrape.py || echo "::warning ::scraper failed, continuing to write empty CSVs"
           else
-            echo "No changes to commit."
+            echo "::warning ::scrape.py not found, writing empty CSVs"
           fi
 
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: scrape-outputs
-          path: out/*
-          if-no-files-found: ignore
-
-      - name: Trigger Make Webhook (non-blocking)
-        shell: bash
-        run: |
-          curl -fsS -X POST "https://hook.us2.make.com/v8xg1sfegycppt03qbkodgx9eesaabl6" || echo "Webhook call failed"
-
-  contents: write
-
-jobs:
-  scrape:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-
-      # Install deps safely (no source builds if possible)
-      - name: Install dependencies (resilient)
-        shell: bash
-        env:
-          PIP_DISABLE_PIP_VERSION_CHECK: "1"
-          PIP_NO_INPUT: "1"
-        run: |
-          set -e
-          python -m pip install --upgrade pip setuptools wheel
-          # Install base deps, prefer binary wheels
-          pip install --only-binary=:all: -r requirements.txt || pip install -r requirements.txt
-          # cloudscraper optional, don't fail if not available
-          pip install --only-binary=:all: cloudscraper==1.2.71 || true
-          pip list
-
-      # Run scraper and always produce CSVs
-      - name: Run scraper (tolerant)
-        shell: bash
-        run: |
-          set -e
-          python scrape.py || {
-            echo "::warning :: scraper error — writing empty CSVs so workflow continues"
-            mkdir -p out
-            printf "timestamp_iso,site_name,product_name,sku,product_url,status,price_value,currency,raw_price_text,source_url,notes\n" > out/current_snapshot.csv
+          # Always produce CSVs so later steps don't fail
+          if [ ! -f out/current_snapshot.csv ]; then
+            echo "timestamp_iso,site_name,product_name,sku,product_url,status,price_value,currency,raw_price_text,source_url,notes" > out/current_snapshot.csv
+          fi
+          if [ ! -f out/products_history.csv ]; then
             cp out/current_snapshot.csv out/products_history.csv
-          }
+          fi
 
-      - name: Show outputs
-        shell: bash
-        run: |
-          echo "----- out dir -----"
+          echo "Out dir contents:"
           ls -la out || true
-          echo "----- git status -----"
-          git status --porcelain || true
 
-      - name: Commit & push results (only if changed)
+      - name: Commit & push results (if changed)
         shell: bash
         run: |
           git add out/*.csv 2>/dev/null || true
@@ -144,10 +87,9 @@ jobs:
         with:
           name: scrape-outputs
           path: out/*
-          if-no-files-found: ignore
+          if-no-files-found: warn
 
-      # Trigger Make webhook safely
-      - name: Trigger Make Webhook (non-blocking)
+      - name: Trigger Make webhook (non-blocking)
         shell: bash
         run: |
-          curl -fsS -X POST "https://hook.us2.make.com/v8xg1sfegycppt03qbkodgx9eesaabl6" || echo "Webhook call failed"
+          curl -fsS -X POST "https://hook.us2.make.com/v8xg1sfegycppt03qbkodgx9eesaabl6" || echo "Webhook call failed (continuing)"
